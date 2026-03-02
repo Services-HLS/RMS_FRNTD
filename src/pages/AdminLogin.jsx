@@ -19,46 +19,22 @@ const AdminLogin = () => {
         setError('');
 
         try {
-            if (username && password) {
-                await new Promise(r => setTimeout(r, 600)); // Simulate API delay
-
-                const roleMap = {
-                    'chef': 'chef',
-                    'cashier': 'cashier',
-                    'inventory': 'inventory',
-                    'waiter': 'waiter',
-                    'superadmin': 'super_admin'
-                };
-
-                const userRole = roleMap[username.toLowerCase()] || 'admin';
-
-                const response = {
-                    token: 'dummy-token-' + Date.now(),
-                    user: {
-                        id: 1,
-                        username: username,
-                        role: userRole,
-                        restaurant_type: 'DINE_IN',
-                        restaurant_id: 1,
-                        restaurant_name: 'Spicy Bites'
-                    }
-                };
-
+            const response = await api.login({ username, password });
+            if (response.token) {
                 login(response.token, response.user);
 
-                if (userRole === 'chef') {
+                const role = String(response.user.role).toLowerCase();
+                if (role === 'chef') {
                     navigate('/admin/kitchen');
-                } else if (userRole === 'super_admin') {
+                } else if (role === 'super_admin') {
                     navigate('/super-admin/dashboard');
-                } else if (userRole === 'cashier') {
+                } else if (role === 'cashier') {
                     navigate('/admin/pos');
-                } else if (userRole === 'inventory') {
+                } else if (role === 'inventory') {
                     navigate('/admin/stock');
                 } else {
                     navigate('/admin/dashboard');
                 }
-            } else {
-                setError('Please enter both username and password.');
             }
         } catch (err) {
             setError('Invalid credentials. Please check your username and password.');
