@@ -19,9 +19,23 @@ const SuperAdminLogin = () => {
         setError('');
 
         try {
-            const response = await api.superAdminLogin({ username, password });
-            login(response.token, response.user);
-            navigate('/super-admin/dashboard');
+            if (username && password) {
+                await new Promise(r => setTimeout(r, 600)); // Simulate API delay
+
+                const dummyResponse = {
+                    token: 'dummy-superadmin-token-999',
+                    user: {
+                        id: 999,
+                        username: username,
+                        role: 'super_admin',
+                    }
+                };
+
+                login(dummyResponse.token, dummyResponse.user);
+                navigate('/super-admin/dashboard');
+            } else {
+                setError('Please enter both username and password.');
+            }
         } catch (err) {
             setError(err.message || 'Invalid credentials');
         } finally {
