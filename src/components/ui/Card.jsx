@@ -2,14 +2,14 @@ import React from 'react';
 
 const Card = ({ children, title, className = '', actions, ...props }) => {
     return (
-        <div className={`bg-white p-6 rounded-xl shadow-md border border-gray-100 ${className}`} {...props}>
+        <div className={`card ${className}`} {...props}>
             {(title || actions) && (
-                <div className="flex justify-between items-center mb-4">
-                    {title && <h3 className="text-lg font-semibold text-gray-800">{title}</h3>}
-                    {actions && <div>{actions}</div>}
+                <div className="flex justify-between items-center mb-4 pb-2 border-b border-neutral-border/50">
+                    {title && <h3 className="text-[15px] font-medium text-primary">{title}</h3>}
+                    {actions && <div className="flex items-center space-x-2">{actions}</div>}
                 </div>
             )}
-            <div>{children}</div>
+            <div className="text-[13px] text-neutral-text font-normal">{children}</div>
         </div>
     );
 };

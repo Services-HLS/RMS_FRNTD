@@ -17,14 +17,11 @@ axiosInstance.interceptors.request.use((config) => {
 const api = {
   // Auth
   login: async (credentials) => {
-    const { data } = await axiosInstance.post("/auth/admin/login", credentials);
+    const { data } = await axiosInstance.post("/auth/login", credentials);
     return data; // { token, user }
   },
   superAdminLogin: async (credentials) => {
-    const { data } = await axiosInstance.post(
-      "/auth/super-admin/login",
-      credentials,
-    );
+    const { data } = await axiosInstance.post("/auth/login", credentials);
     return data; // { token, user }
   },
 
@@ -34,21 +31,38 @@ const api = {
     return data;
   },
   createRestaurant: async (restaurantData) => {
-    const { data } = await axiosInstance.post("/restaurants", restaurantData);
+    let headers = {};
+    if (restaurantData instanceof FormData) {
+      headers['Content-Type'] = 'multipart/form-data';
+    }
+    const { data } = await axiosInstance.post("/restaurants", restaurantData, { headers });
     return data;
   },
   getRestaurant: async (id = 1) => {
     const { data } = await axiosInstance.get("/restaurants");
     return data.find((r) => r.id === id) || data[0];
   },
+  deleteRestaurant: async (id) => {
+    const { data } = await axiosInstance.delete(`/restaurants/${id}`);
+    return data;
+  },
 
   // Helper to get current restaurant ID
-  getCurrentRestaurantId: () => localStorage.getItem("restaurant_id") || 1,
+  getCurrentRestaurantId: () => {
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    if (user && user.restaurant_id) return user.restaurant_id;
+    return localStorage.getItem("restaurant_id") || 1;
+  },
 
   // Menu Inventory
   getMenu: async (restaurantId) => {
     const rid = restaurantId || api.getCurrentRestaurantId();
     const { data } = await axiosInstance.get(`/inventory/menu/${rid}`);
+    return data;
+  },
+  getCategories: async (restaurantId) => {
+    const rid = restaurantId || api.getCurrentRestaurantId();
+    const { data } = await axiosInstance.get(`/inventory/categories/${rid}`);
     return data;
   },
   updateMenuItem: async (id, updates) => {
@@ -79,6 +93,13 @@ const api = {
   updateStock: async (itemId, quantity) => {
     const { data } = await axiosInstance.patch(`/inventory/stock/${itemId}`, {
       quantity,
+    });
+    return data;
+  },
+  addStock: async (stockItem) => {
+    const { data } = await axiosInstance.post("/inventory/stock", {
+      restaurant_id: api.getCurrentRestaurantId(),
+      ...stockItem,
     });
     return data;
   },
@@ -113,6 +134,7 @@ const api = {
       restaurant_id: api.getCurrentRestaurantId(),
       type: orderData.table_id ? "DINE_IN" : "WALK_IN",
       order_date: new Date().toISOString().split("T")[0],
+      order_source: 'COUNTER',
       ...orderData,
     });
     return data;
@@ -129,7 +151,7 @@ const api = {
   },
   getOrderStatus: async (orderId) => {
     const rid = api.getCurrentRestaurantId();
-    const { data } = await axiosInstance.get(`/orders/active/${rid}`);
+    const { data } = await axiosInstance.get(`/orders/all/${rid}`);
     return data.find((o) => o.id === parseInt(orderId)) || null;
   },
   updateOrderStatus: async (orderId, status) => {
@@ -138,11 +160,27 @@ const api = {
     });
     return data;
   },
+  cancelOrder: async (orderId) => {
+    const { data } = await axiosInstance.patch(`/orders/${orderId}/status`, {
+      status: "CANCELLED",
+    });
+    return data;
+  },
+  updateOrderItems: async (orderId, items, total_amount) => {
+    const { data } = await axiosInstance.put(`/orders/${orderId}/items`, {
+      items,
+      total_amount,
+    });
+    return data;
+  },
+  deleteOrder: async (orderId) => {
+    const { data } = await axiosInstance.delete(`/orders/${orderId}`);
+    return data;
+  },
   processPayment: async (orderId, method) => {
     const { data } = await axiosInstance.patch(`/orders/${orderId}/status`, {
-      status: "CLOSED",
       payment_method: method,
-      payment_status: "PAID",
+      payment_status: "COMPLETED",
     });
     return data;
   },
@@ -227,6 +265,10 @@ const api = {
   },
   deleteAdmin: async (id) => {
     const { data } = await axiosInstance.delete(`/admins/${id}`);
+    return data;
+  },
+  getRoles: async () => {
+    const { data } = await axiosInstance.get("/roles");
     return data;
   },
 };

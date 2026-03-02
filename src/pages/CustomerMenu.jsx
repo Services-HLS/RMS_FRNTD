@@ -8,6 +8,7 @@ import api from '../services/api';
 const CustomerMenu = () => {
     const [searchParams] = useSearchParams();
     const tableId = searchParams.get('table_id');
+    const orderSource = searchParams.get('source');
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCart, setShowCart] = useState(false);
@@ -65,7 +66,7 @@ const CustomerMenu = () => {
                         {/* Cart summary on desktop */}
                         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
                             <h3 className="font-bold text-lg mb-3">Your Cart</h3>
-                            <Cart tableId={tableId} />
+                            <Cart tableId={tableId} source={orderSource} />
                         </div>
                         <SmartSuggestions messages={messages} />
                     </div>
@@ -83,7 +84,7 @@ const CustomerMenu = () => {
                             <h3 className="font-bold text-lg">Your Cart</h3>
                             <button onClick={() => setShowCart(false)} className="text-gray-400 text-xl">✕</button>
                         </div>
-                        <Cart tableId={tableId} onOrderPlaced={() => setShowCart(false)} />
+                        <Cart tableId={tableId} source={orderSource} onOrderPlaced={() => setShowCart(false)} />
                     </div>
                 </div>
             )}

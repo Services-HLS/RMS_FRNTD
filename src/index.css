@@ -1,27 +1,116 @@
 @import "tailwindcss";
 
-/* Custom Utilities */
+@theme {
+  /* Core Colors */
+  --color-primary: #2F2F2F;
+  --color-secondary: #4CAF50;
+
+  /* Semantic Colors - Prefixed to ensure v4 picks them up without conflict */
+  --color-app-neutral: #F7F8FA;
+  --color-app-neutral-card: #FFFFFF;
+  --color-app-neutral-border: #E0E0E0;
+  --color-app-neutral-zebra: #FAFAFA;
+  --color-app-neutral-text: #333333;
+  --color-app-neutral-muted: #666666;
+
+  --color-warning: #FFA726;
+  --color-error: #E53935;
+  --color-info: #1976D2;
+
+  /* Typography & Shadows */
+  --font-sans: "Inter", "Roboto", "ui-sans-serif", "system-ui", "sans-serif";
+  --shadow-premium: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Explicitly define utility classes for v4 compatibility */
+@utility bg-neutral {
+  background-color: var(--color-app-neutral);
+}
+
+@utility bg-neutral-zebra {
+  background-color: var(--color-app-neutral-zebra);
+}
+
+@utility bg-neutral-card {
+  background-color: var(--color-app-neutral-card);
+}
+
+@utility text-neutral-text {
+  color: var(--color-app-neutral-text);
+}
+
+@utility text-neutral-muted {
+  color: var(--color-app-neutral-muted);
+}
+
+@utility border-neutral-border {
+  border-color: var(--color-app-neutral-border);
+}
+
+@utility bg-error {
+  background-color: var(--color-app-error);
+}
+
+@utility text-error {
+  color: var(--color-app-error);
+}
+
+@utility border-error {
+  border-color: var(--color-app-error);
+}
+
+@utility bg-warning {
+  background-color: var(--color-app-warning);
+}
+
+@utility text-warning {
+  color: var(--color-app-warning);
+}
+
+@utility bg-info {
+  background-color: var(--color-app-info);
+}
+
+@utility text-info {
+  color: var(--color-app-info);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-app-neutral);
+    color: var(--color-app-neutral-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Custom UI Component Classes */
 .btn {
-  @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+  @apply px-4 py-2 rounded-[6px] font-medium transition-all duration-150 text-sm whitespace-nowrap inline-flex items-center justify-center;
 }
 
 .btn-primary {
-  @apply bg-blue-600 text-white hover:bg-blue-700;
+  @apply bg-primary text-white hover:brightness-95 active:scale-[0.98];
 }
 
 .btn-secondary {
-  @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+  @apply border border-primary text-primary hover:bg-neutral-zebra active:scale-[0.98];
+}
+
+.btn-success {
+  @apply bg-secondary text-white hover:brightness-95 active:scale-[0.98];
 }
 
 .input {
-  @apply w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500;
+  @apply w-full px-3 py-2 border border-neutral-border rounded-[6px] text-sm font-normal focus:outline-none focus:ring-1 focus:ring-secondary transition-all placeholder:text-neutral-muted bg-white;
 }
 
 .card {
-  @apply bg-white p-6 rounded-xl shadow-md border border-gray-100;
+  @apply bg-white p-5 rounded-[8px] shadow-premium border border-neutral-border;
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar Styles */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
@@ -31,16 +120,24 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #334155; /* slate-700 */
-  border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #475569; /* slate-600 */
+  @apply bg-primary/20 rounded-full hover:bg-primary/40 transition-colors;
 }
 
 /* For Firefox */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #334155 transparent;
+  scrollbar-color: #2F2F2F33 transparent;
+}
+
+/* Admin Specific Helper Classes */
+.sidebar-active {
+  @apply bg-secondary text-white shadow-sm;
+}
+
+.table-header {
+  @apply bg-primary text-white font-medium text-[13px] sticky top-0 z-10;
+}
+
+.table-row-zebra {
+  @apply hover:bg-neutral-zebra transition-colors;
 }

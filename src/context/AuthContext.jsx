@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
-    const restaurantId = user?.restaurant_id || 1;
+    const restaurantId = user?.restaurant_id || localStorage.getItem('restaurant_id') || 1;
 
     return (
         <AuthContext.Provider value={{ token, user, restaurantId, login, logout }}>

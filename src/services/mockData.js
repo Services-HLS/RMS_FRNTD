@@ -2,7 +2,7 @@ export const MOCK_RESTAURANT = {
     id: 1,
     name: "Spicy Bites",
     type: "DINE_IN",
-    logo_url: "https://via.placeholder.com/150",
+    logo_url: "https://ui-avatars.com/api/?name=Restaurant&background=random&color=fff",
 };
 
 export const MOCK_TABLES = [
