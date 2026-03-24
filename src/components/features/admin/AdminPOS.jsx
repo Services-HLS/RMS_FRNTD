@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Button, Input, Card, Loader } from '../../ui';
+import { Button, Input, Card, Loader, Modal } from '../../ui';
+import { useAuth } from '../../../context/AuthContext';
 import api from '../../../services/api';
 
-const AdminPOS = () => {
+const AdminPOS = ({ isCustomerMode = false, customerTableId = '' }) => {
+    const { user } = useAuth();
     const [menu, setMenu] = useState([]);
     const [filteredMenu, setFilteredMenu] = useState([]);
     const [cart, setCart] = useState([]);
@@ -12,23 +14,45 @@ const AdminPOS = () => {
     const [selectedCategory, setSelectedCategory] = useState('ALL');
     const [categories, setCategories] = useState(['ALL']);
 
-    const [orderType, setOrderType] = useState('WALK_IN');
-    const [tableId, setTableId] = useState('');
+    const [orderType, setOrderType] = useState(isCustomerMode ? 'QR_ORDER' : 'WALK_IN');
+    const [tableId, setTableId] = useState(customerTableId);
+    const [availableTables, setAvailableTables] = useState([]);
     const [activeTableOrder, setActiveTableOrder] = useState(null);
     const [searchParams] = useSearchParams();
     const [paymentMethod, setPaymentMethod] = useState('CASH');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [successModal, setSuccessModal] = useState({ isOpen: false, message: '' });
 
     useEffect(() => {
         const tableParam = searchParams.get('table');
-        if (tableParam) {
+        if (tableParam && availableTables.length > 0) {
+            setOrderType('DINE_IN');
+            const matchedTable = availableTables.find(t => 
+                String(t.id) === tableParam || 
+                String(t.table_number) === tableParam || 
+                (t.display_name && String(t.display_name).toLowerCase() === tableParam.toLowerCase())
+            );
+            setTableId(matchedTable ? matchedTable.id : tableParam);
+        } else if (tableParam && availableTables.length === 0) {
+            // initial fallback if tables not loaded yet, just to set DINE_IN quickly
             setOrderType('DINE_IN');
             setTableId(tableParam);
         }
-    }, [searchParams]);
+    }, [searchParams, availableTables]);
 
     useEffect(() => {
         fetchMenu();
+        fetchTables();
     }, []);
+
+    const fetchTables = async () => {
+        try {
+            const data = await api.getTables();
+            setAvailableTables(data);
+        } catch (error) {
+            console.error("Failed to fetch tables", error);
+        }
+    };
 
     useEffect(() => {
         filterMenu();
@@ -111,32 +135,49 @@ const AdminPOS = () => {
         return cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
     };
 
+    const [customerName, setCustomerName] = useState('');
+    const [customerPhone, setCustomerPhone] = useState('');
+
     const handlePlaceOrder = async (targetStatus) => {
         if (cart.length === 0) return;
-        if (orderType === 'DINE_IN' && !tableId.trim()) {
+        if (orderType === 'DINE_IN' && (!tableId || !String(tableId).trim())) {
             alert('Please enter a Table Number for Dine-In orders.');
             return;
         }
 
         try {
+            setIsProcessing(true);
             const orderData = {
-                table_id: orderType === 'DINE_IN' ? tableId : null,
+                restaurant_id: api.getCurrentRestaurantId(),
+                table_id: (orderType === 'DINE_IN' || orderType === 'QR_ORDER') ? tableId : null,
                 type: orderType,
                 items: cart.map(item => ({ id: item.id, qty: item.qty, price: item.price })),
                 total_amount: calculateTotal(),
                 payment_method: paymentMethod || 'CASH',
-                payment_status: 'COMPLETED',
+                payment_status: isCustomerMode ? 'PENDING' : 'COMPLETED',
                 status: targetStatus,
+                ordered_by: isCustomerMode ? 'CUSTOMER' : (user?.username || user?.role || 'STAFF'),
+                ordered_by_role: isCustomerMode ? 'CUSTOMER' : (user?.role || 'STAFF'),
+                customer_name: customerName,
+                customer_phone: customerPhone
             };
             await api.createOrder(orderData);
-            alert('Order Paid & Sent to Kitchen Display!');
+            
+            setSuccessModal({
+                isOpen: true,
+                message: isCustomerMode ? 'Order Sent to Kitchen!' : 'Order Paid & Sent to Kitchen Display!'
+            });
 
             setCart([]);
             setSearchQuery('');
-            setTableId('');
+            setCustomerName('');
+            setCustomerPhone('');
+            if (!isCustomerMode) setTableId('');
         } catch (error) {
             console.error("Failed to place order", error);
             alert('Failed to place order. Please try again.');
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -147,13 +188,17 @@ const AdminPOS = () => {
     );
 
     return (
-        <div className="flex flex-col lg:flex-row h-full gap-6 animate-in fade-in duration-500 pb-10">
+        <div className="flex flex-col lg:flex-row h-auto lg:h-full gap-6 animate-in fade-in duration-500 lg:pb-10 pb-4">
             {/* Left Panel: Menu Selection */}
-            <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 flex flex-col min-h-[500px] lg:min-h-0">
                 <div className="mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
                     <div>
-                        <h1 className="text-[20px] font-semibold tracking-tight text-primary">Universal POS</h1>
-                        <p className="text-neutral-muted text-[13px] font-normal mt-1 tracking-wide">Direct Counter & Dine-In Sales Management.</p>
+                        <h1 className="text-[20px] font-semibold tracking-tight text-primary">
+                            {isCustomerMode ? 'Menu & Order' : 'Universal POS'}
+                        </h1>
+                        <p className="text-neutral-muted text-[13px] font-normal mt-1 tracking-wide">
+                            {isCustomerMode ? 'Select items to add to your order.' : 'Direct Counter & Dine-In Sales Management.'}
+                        </p>
                     </div>
                 </div>
 
@@ -232,7 +277,7 @@ const AdminPOS = () => {
             </div>
 
             {/* Right Panel: Active Cart & Checkout */}
-            <div className="w-full lg:w-[400px] bg-white rounded-[8px] shadow-premium p-6 flex flex-col h-full border border-neutral-border relative overflow-hidden flex-shrink-0">
+            <div className="w-full lg:w-[400px] bg-white rounded-[8px] shadow-premium p-6 flex flex-col h-auto min-h-[400px] lg:h-full border border-neutral-border relative overflow-hidden flex-shrink-0">
                 <div className="absolute top-0 left-0 w-full h-1 bg-primary"></div>
 
                 <div className="flex items-center justify-between mb-6">
@@ -244,44 +289,75 @@ const AdminPOS = () => {
                 </div>
 
                 {/* Order Type Selector */}
-                <div className="mb-6">
-                    <div className="flex bg-neutral-zebra p-1 rounded-[6px] border border-neutral-border shadow-inner mb-4 h-11 items-center">
-                        <button
-                            className={`flex-1 h-full flex items-center justify-center text-[13px] font-semibold rounded-[4px] transition-all ${orderType === 'WALK_IN' ? 'bg-white text-primary shadow-sm border border-neutral-border' : 'text-neutral-muted hover:text-primary'}`}
-                            onClick={() => { setOrderType('WALK_IN'); setTableId(''); }}
-                        >
-                            Walk-In
-                        </button>
-                        <button
-                            className={`flex-1 h-full flex items-center justify-center text-[13px] font-semibold rounded-[4px] transition-all ${orderType === 'DINE_IN' ? 'bg-white text-primary shadow-sm border border-neutral-border' : 'text-neutral-muted hover:text-primary'}`}
-                            onClick={() => setOrderType('DINE_IN')}
-                        >
-                            Dine-In
-                        </button>
-                    </div>
-
-                    {orderType === 'DINE_IN' && (
-                        <div className="animate-in slide-in-from-top-2 fade-in duration-200">
-                            <Input
-                                placeholder="Enter Table Number..."
-                                value={tableId}
-                                onChange={(e) => setTableId(e.target.value)}
-                                className="w-full font-bold border-neutral-border bg-neutral-zebra text-center h-10 rounded-[6px]"
-                            />
-                            {activeTableOrder && (
-                                <div className="mt-3 bg-secondary/5 border border-secondary/10 rounded-[6px] p-3 flex items-center justify-between">
-                                    <div className="flex items-center">
-                                        <div className="w-2 h-2 bg-secondary rounded-full animate-pulse mr-2"></div>
-                                        <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Running Order Active</span>
-                                    </div>
-                                    <span className="text-[10px] font-bold text-primary tracking-tight">#{activeTableOrder.id}</span>
-                                </div>
-                            )}
+                {!isCustomerMode && availableTables.length > 0 && (
+                    <div className="mb-6">
+                        <div className="flex bg-neutral-zebra p-1 rounded-[6px] border border-neutral-border shadow-inner mb-4 h-11 items-center">
+                            <button
+                                className={`flex-1 h-full flex items-center justify-center text-[13px] font-semibold rounded-[4px] transition-all ${orderType === 'WALK_IN' ? 'bg-white text-primary shadow-sm border border-neutral-border' : 'text-neutral-muted hover:text-primary'}`}
+                                onClick={() => { setOrderType('WALK_IN'); setTableId(''); }}
+                            >
+                                Walk-In
+                            </button>
+                            <button
+                                className={`flex-1 h-full flex items-center justify-center text-[13px] font-semibold rounded-[4px] transition-all ${orderType === 'DINE_IN' ? 'bg-white text-primary shadow-sm border border-neutral-border' : 'text-neutral-muted hover:text-primary'}`}
+                                onClick={() => setOrderType('DINE_IN')}
+                            >
+                                Dine-In
+                            </button>
                         </div>
-                    )}
-                </div>
+
+                        {orderType === 'DINE_IN' && (
+                            <div className="animate-in slide-in-from-top-2 fade-in duration-200">
+                                <select
+                                    value={tableId}
+                                    onChange={(e) => setTableId(e.target.value)}
+                                    className="w-full font-bold border border-neutral-border bg-neutral-zebra px-3 h-10 rounded-[6px] outline-none"
+                                >
+                                    <option value="" disabled>Select Table Number...</option>
+                                    {availableTables.map(t => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.table_number || t.display_name || `Table ${t.id}`}{t.status === 'OCCUPIED' ? ' (Occupied)' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                {activeTableOrder && (
+                                    <div className="mt-3 bg-secondary/5 border border-secondary/10 rounded-[6px] p-3 flex items-center justify-between">
+                                        <div className="flex items-center">
+                                            <div className="w-2 h-2 bg-secondary rounded-full animate-pulse mr-2"></div>
+                                            <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Running Order Active</span>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-primary tracking-tight">#{activeTableOrder.id}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="flex-1 overflow-y-auto mb-6 pr-1 custom-scrollbar border-t border-neutral-border pt-4">
+                    {!isCustomerMode && (
+                        <div className="mb-6 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-bold text-primary uppercase tracking-widest">Customer Info (Optional)</span>
+                                <button onClick={() => { setCustomerName(''); setCustomerPhone(''); }} className="text-[10px] text-error font-bold uppercase hover:underline">Clear</button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Input
+                                    placeholder="Name..."
+                                    value={customerName}
+                                    onChange={(e) => setCustomerName(e.target.value)}
+                                    className="h-9 text-[12px] border-neutral-border bg-neutral-zebra"
+                                />
+                                <Input
+                                    placeholder="Phone..."
+                                    value={customerPhone}
+                                    onChange={(e) => setCustomerPhone(e.target.value)}
+                                    className="h-9 text-[12px] border-neutral-border bg-neutral-zebra"
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     {cart.length === 0 && !activeTableOrder && (
                         <div className="h-full flex flex-col items-center justify-center text-center py-10">
                             <div className="w-16 h-16 bg-neutral-zebra rounded-full flex items-center justify-center mb-4 transition-transform hover:scale-110">
@@ -352,13 +428,48 @@ const AdminPOS = () => {
                     <Button
                         className="w-full h-12 bg-secondary hover:brightness-95 text-white font-bold rounded-[8px] shadow-lg shadow-secondary/20 uppercase tracking-widest text-[13px] transition-all flex items-center justify-center space-x-3 disabled:opacity-40 disabled:cursor-not-allowed group"
                         onClick={() => handlePlaceOrder('ORDERED')}
-                        disabled={cart.length === 0}
+                        disabled={cart.length === 0 || isProcessing}
                     >
-                        <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                        <span>Mark Paid & Send to Kitchen</span>
+                        {isProcessing ? (
+                            <div className="flex items-center space-x-2">
+                                <span className="w-2 h-2 bg-white rounded-full animate-bounce"></span>
+                                <span className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
+                                <span className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+                            </div>
+                        ) : (
+                            <>
+                                <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                                <span>{isCustomerMode ? 'Place Order' : 'Mark Paid & Send to Kitchen'}</span>
+                            </>
+                        )}
                     </Button>
                 </div>
             </div>
+
+            {/* Success Modal */}
+            <Modal
+                isOpen={successModal.isOpen}
+                onClose={() => setSuccessModal({ isOpen: false, message: '' })}
+                title={<span className="text-xl font-black text-slate-800 tracking-tight block text-center w-full">Order Confirmation</span>}
+            >
+                <div className="flex flex-col items-center justify-center py-6 text-center space-y-4">
+                    <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-500 mb-2 shadow-inner ring-4 ring-emerald-50">
+                        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-800 tracking-tight">{successModal.message}</h3>
+                    <p className="text-slate-500 font-medium">Your request has been processed securely to the back-of-house systems.</p>
+                    <div className="w-full pt-4 border-t border-slate-100 mt-2">
+                        <Button 
+                            onClick={() => setSuccessModal({ isOpen: false, message: '' })}
+                            className="w-full py-4 bg-slate-900 border border-slate-700 text-white rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+                        >
+                            Back to Register
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

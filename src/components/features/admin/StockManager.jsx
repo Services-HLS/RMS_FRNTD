@@ -93,22 +93,22 @@ const StockManager = () => {
                     <p className="text-neutral-muted text-sm font-normal mt-0.5">Manage kitchen supplies and raw material stock levels.</p>
                 </div>
 
-                <div className="flex items-center space-x-3">
-                    <div className="relative group">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                    <div className="relative group w-full sm:w-auto">
                         <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-muted group-focus-within:text-secondary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         <Input
                             placeholder="Search materials..."
-                            className="pl-11 h-9 !mb-0 border-neutral-border bg-neutral-zebra rounded-[6px] focus:bg-white transition-all font-medium text-sm w-56"
+                            className="pl-11 h-9 !mb-0 border-neutral-border bg-neutral-zebra rounded-[6px] focus:bg-white transition-all font-medium text-sm w-full md:w-56"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
                     <Button
                         onClick={() => setIsAdding(!isAdding)}
-                        className={`h-9 px-4 rounded-[6px] text-xs transition-all ${isAdding ? 'bg-error hover:brightness-90' : 'bg-primary hover:brightness-90'} text-white`}
+                        className={`h-9 px-4 rounded-[6px] text-xs transition-all w-full sm:w-auto ${isAdding ? 'bg-error hover:brightness-90' : 'bg-primary hover:brightness-90'} text-white`}
                     >
                         {isAdding ? 'Cancel' : (
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center justify-center space-x-2">
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
                                 <span>New Material</span>
                             </div>
@@ -192,7 +192,7 @@ const StockManager = () => {
                                     </div>
                                     <p className="text-[12px] font-medium text-neutral-muted capitalize tracking-wide mb-4">Storage Unit: {item.unit}</p>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {/* Quantity Control */}
                                         <div className="space-y-1.5">
                                             <p className="text-[10px] font-bold text-neutral-muted uppercase tracking-widest pl-0.5">Quantity</p>

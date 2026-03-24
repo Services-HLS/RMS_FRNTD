@@ -49,12 +49,18 @@ const SuperAdminLogin = () => {
             </header>
 
             {/* Main Authenticatiom Visual Canvas */}
-            <main className="flex-1 flex items-center justify-center p-4">
-                <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <main 
+                className="flex-1 flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat relative"
+                style={{ backgroundImage: "url('/background-RS.svg')" }}
+            >
+                {/* Visual Overlay Layer */}
+                <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[2px]"></div>
+
+                <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
                     <Card className="w-full !p-8 shadow-2xl shadow-indigo-100/50 border-0 ring-1 ring-slate-100 rounded-2xl bg-white" title={
                         <div className="text-left w-full">
-                            <span className="text-2xl font-black tracking-tight text-slate-900 block mb-1">Super Admin Login</span>
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest block">Platform Management</span>
+                            <span className="text-2xl font-black tracking-tight text-slate-900 block mb-1">Login</span>
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest block">Super Admin Terminal</span>
                         </div>
                     }>
                         <form onSubmit={handleLogin} className="space-y-6 mt-6">

@@ -12,7 +12,13 @@ const SidebarLayout = ({ children }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isAlertsOpen, setIsAlertsOpen] = useState(false);
     const [alertCount, setAlertCount] = useState(0);
-    const [restaurantName, setRestaurantName] = useState(localStorage.getItem('restaurant_name') || 'Restaurant OS');
+    const [restaurantName, setRestaurantName] = useState(user?.restaurant_name || localStorage.getItem('restaurant_name') || 'Restaurant OS');
+
+    useEffect(() => {
+        if (user?.restaurant_name) {
+            setRestaurantName(user.restaurant_name);
+        }
+    }, [user]);
 
     const userRole = (user?.role || 'admin').toLowerCase();
 
@@ -68,9 +74,8 @@ const SidebarLayout = ({ children }) => {
                 </Button>
             </div>
 
-            {/* Sidebar (Desktop & Mobile Overlay) */}
             <aside className={`
-                fixed inset-y-0 left-0 z-30 w-64 bg-primary text-white transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:block h-full flex flex-col flex-none
+                fixed inset-y-0 left-0 z-[60] w-64 bg-primary text-white transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static h-full flex flex-col flex-none
                 ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
             `}>
                 <div className="p-6 border-b border-white/10 flex flex-none justify-between items-center">
@@ -164,7 +169,7 @@ const SidebarLayout = ({ children }) => {
             {/* Overlay for mobile menu */}
             {isMobileMenuOpen && (
                 <div
-                    className="fixed inset-0 bg-primary/80 backdrop-blur-sm z-20 lg:hidden"
+                    className="fixed inset-0 bg-primary/80 backdrop-blur-sm z-[55] lg:hidden"
                     onClick={() => setIsMobileMenuOpen(false)}
                 />
             )}

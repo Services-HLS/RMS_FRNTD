@@ -2,7 +2,7 @@ import axios from "axios";
 
 // ─── Axios instance ────────────────────────────────────────────────────────────
 const axiosInstance = axios.create({
-  baseURL: "/api",
+  baseURL: import.meta.env.VITE_API_URL || "/api",
   headers: { "Content-Type": "application/json" },
 });
 
@@ -132,9 +132,9 @@ const api = {
   createOrder: async (orderData) => {
     const { data } = await axiosInstance.post("/orders", {
       restaurant_id: api.getCurrentRestaurantId(),
-      type: orderData.table_id ? "DINE_IN" : "WALK_IN",
+      type: orderData.type || (orderData.table_id ? "DINE_IN" : "WALK_IN"),
       order_date: new Date().toISOString().split("T")[0],
-      order_source: 'COUNTER',
+      order_source: orderData.order_source || 'COUNTER',
       ...orderData,
     });
     return data;
@@ -245,10 +245,29 @@ const api = {
     id: Date.now(),
     status: "ACTIVE",
   }),
-  getPrinters: async () => [],
-  getKOTJobs: async () => [],
-  createKOTJob: async () => {
-    throw new Error("KOT not yet supported by backend");
+  getPrinters: async (restaurantId) => {
+    const rid = restaurantId || api.getCurrentRestaurantId();
+    // Implementation for printers can be added here
+    return [];
+  },
+  getActiveKOTs: async (restaurantId, includeCompleted = false) => {
+    const rid = restaurantId || api.getCurrentRestaurantId();
+    const { data } = await axiosInstance.get(`/orders/kot/${rid}/active`, {
+      params: { include_completed: includeCompleted }
+    });
+    return data;
+  },
+  updateKOTStatus: async (kotId, status) => {
+    const { data } = await axiosInstance.patch(`/orders/kot/${kotId}/status`, {
+      status,
+    });
+    return data;
+  },
+  createKOTJob: async (orderId) => {
+    // This is now automatically handled by the backend on order creation,
+    // but we can keep a manual trigger for re-printing if needed.
+    const { data } = await axiosInstance.post("/orders/kot/reprint", { order_id: orderId });
+    return data;
   },
   // Admin Management (Super Admin)
   getAdmins: async (restaurantId) => {
@@ -269,6 +288,11 @@ const api = {
   },
   getRoles: async () => {
     const { data } = await axiosInstance.get("/roles");
+    return data;
+  },
+  getCustomerIdentities: async (phone, restaurantId) => {
+    const rid = restaurantId || api.getCurrentRestaurantId();
+    const { data } = await axiosInstance.get(`/orders/customer-identities/${rid}/${phone}`);
     return data;
   },
 };

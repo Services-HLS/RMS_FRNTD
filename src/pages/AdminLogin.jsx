@@ -45,27 +45,16 @@ const AdminLogin = () => {
 
     return (
         <div className="min-h-screen flex flex-col bg-neutral relative selection:bg-secondary/30 selection:text-primary">
-            {/* Professional Header */}
-            <header className="w-full bg-white border-b border-neutral-border shadow-sm">
-                <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-                    <div className="flex items-center space-x-3 group">
-                        <div className="w-9 h-9 bg-primary rounded-[6px] flex items-center justify-center transform group-hover:rotate-3 transition-transform duration-300 shadow-premium">
-                            <span className="text-lg">🍕</span>
-                        </div>
-                        <span className="text-lg font-bold tracking-tight text-primary">
-                            Restaurant <span className="text-secondary">OS</span>
-                        </span>
-                    </div>
-                    <div className="text-[11px] font-bold text-neutral-muted tracking-[0.2em] uppercase hidden sm:block">
-                        Secure Authentication System
-                    </div>
-                </div>
-            </header>
 
             {/* Main Login Area */}
-            <main className="flex-1 flex items-center justify-center p-6 bg-neutral">
-                <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <Card className="shadow-premium border border-neutral-border !p-8 bg-white" title={<span className="text-[20px] font-semibold text-primary">Staff Terminal Login</span>}>
+            <main 
+                className="flex-1 flex items-center justify-center p-6 bg-cover bg-center bg-no-repeat relative"
+                style={{ backgroundImage: "url('/background-RS.svg')" }}
+            >
+                {/* Overlay for better readability (optional but recommended for UX) */}
+                <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px]"></div>
+                <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
+                    <Card className="shadow-premium border border-neutral-border !p-8 bg-white" title={<span className="text-[20px] font-semibold text-primary">Login</span>}>
                         <form onSubmit={handleLogin} className="space-y-6 mt-6">
                             <div className="space-y-5">
                                 <div>
@@ -139,17 +128,6 @@ const AdminLogin = () => {
                 </div>
             </main>
 
-            {/* Global Footer */}
-            <footer className="w-full border-t border-neutral-border py-8 bg-white">
-                <div className="max-w-7xl mx-auto px-6 flex flex-col items-center justify-between font-medium text-[12px] text-neutral-muted sm:flex-row">
-                    <span>© {new Date().getFullYear()} Restaurant OS Management Ecosystem</span>
-                    <div className="flex space-x-8 mt-4 sm:mt-0 uppercase tracking-tighter">
-                        <a href="#" className="hover:text-primary transition-colors">Documentation</a>
-                        <a href="#" className="hover:text-primary transition-colors">Security Status</a>
-                        <a href="#" className="hover:text-primary transition-colors">Support</a>
-                    </div>
-                </div>
-            </footer>
         </div>
     );
 };

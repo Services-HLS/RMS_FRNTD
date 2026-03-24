@@ -5,7 +5,7 @@ const SmartSuggestions = ({ messages }) => {
     if (!messages || messages.length === 0) return null;
 
     return (
-        <div className="hidden lg:block w-80 pl-6 space-y-6">
+        <div className="w-full space-y-4">
             {messages.map(msg => (
                 <div key={msg.id} className="relative group">
                     {msg.type === 'STORY' && (

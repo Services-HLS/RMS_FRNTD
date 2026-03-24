@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
-const Header = () => {
+const Header = ({ isCustomerMode = false }) => {
     const { user, token, logout } = useAuth();
     const navigate = useNavigate();
 
@@ -28,36 +28,38 @@ const Header = () => {
                     </Link>
 
                     {/* Navigation Actions */}
-                    <div className="flex items-center space-x-4 sm:space-x-8">
-                        {token && user ? (
-                            <div className="flex items-center space-x-4">
-                                <div className="hidden sm:flex flex-col items-end mr-2">
-                                    <span className="text-xs font-black text-slate-900 capitalize leading-none mb-1">
-                                        {user.username}
-                                    </span>
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1.5 py-0.5 bg-slate-50 rounded">
-                                        {user.role?.replace('_', ' ')}
-                                    </span>
+                    {!isCustomerMode && (
+                        <div className="flex items-center space-x-4 sm:space-x-8">
+                            {token && user ? (
+                                <div className="flex items-center space-x-4">
+                                    <div className="hidden sm:flex flex-col items-end mr-2">
+                                        <span className="text-xs font-black text-slate-900 capitalize leading-none mb-1">
+                                            {user.username}
+                                        </span>
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1.5 py-0.5 bg-slate-50 rounded">
+                                            {user.role?.replace('_', ' ')}
+                                        </span>
+                                    </div>
+                                    <div className="h-8 w-px bg-slate-100 hidden sm:block"></div>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="flex items-center space-x-2 px-4 py-2 rounded-xl text-slate-600 hover:text-red-600 hover:bg-red-50 transition-all duration-300 font-bold text-sm border border-transparent hover:border-red-100 active:scale-95"
+                                    >
+                                        <span>Logout</span>
+                                        <span className="text-xs">🔒</span>
+                                    </button>
                                 </div>
-                                <div className="h-8 w-px bg-slate-100 hidden sm:block"></div>
-                                <button
-                                    onClick={handleLogout}
-                                    className="flex items-center space-x-2 px-4 py-2 rounded-xl text-slate-600 hover:text-red-600 hover:bg-red-50 transition-all duration-300 font-bold text-sm border border-transparent hover:border-red-100 active:scale-95"
+                            ) : (
+                                <Link
+                                    to="/login"
+                                    className="px-5 py-2.5 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 hover:shadow-xl hover:shadow-slate-200 transition-all duration-300 active:scale-95 flex items-center space-x-2"
                                 >
-                                    <span>Logout</span>
-                                    <span className="text-xs">🔒</span>
-                                </button>
-                            </div>
-                        ) : (
-                            <Link
-                                to="/login"
-                                className="px-5 py-2.5 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 hover:shadow-xl hover:shadow-slate-200 transition-all duration-300 active:scale-95 flex items-center space-x-2"
-                            >
-                                <span>Portal Access</span>
-                                <span className="text-lg">→</span>
-                            </Link>
-                        )}
-                    </div>
+                                    <span>Portal Access</span>
+                                    <span className="text-lg">→</span>
+                                </Link>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </header>

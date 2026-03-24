@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { Card, Loader, Button } from '../../ui';
 import api from '../../../services/api';
+import { customConfirm } from '../../../utils/Alert';
 
-const OrderHistory = () => {
+const OrderHistory = ({ isCustomerMode = false, customerTableId = '', customerPhone = '' }) => {
+    const { phone } = useParams();
+    const effectivePhone = customerPhone || phone;
+    const [searchQuery, setSearchQuery] = useState('');
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+    const [filterDate, setFilterDate] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
 
     // Sub-page routing state
@@ -24,7 +29,7 @@ const OrderHistory = () => {
 
     useEffect(() => {
         fetchHistory();
-    }, [filterDate, statusFilter]);
+    }, [filterDate, statusFilter, searchQuery, effectivePhone]);
 
     const fetchHistory = async () => {
         setLoading(true);
@@ -47,7 +52,30 @@ const OrderHistory = () => {
                     statusMatch = o.status === 'CANCELLED';
                 }
 
-                return dateMatch && statusMatch;
+                // Global Search (ID, Name, Phone)
+                const s = searchQuery.toLowerCase();
+                const searchMatch = !searchQuery || 
+                    String(o.id).includes(s) ||
+                    (o.customer_name && o.customer_name.toLowerCase().includes(s)) ||
+                    (o.customer_phone && o.customer_phone.includes(s));
+
+                if (isCustomerMode) {
+                    if (!effectivePhone && !customerTableId) return false; 
+                    
+                    let matches = false;
+                    // Customer must match EXACTLY their phone number OR their active table session
+                    if (effectivePhone && String(o.customer_phone) === String(effectivePhone)) {
+                        matches = true;
+                    }
+                    if (customerTableId && String(o.table_id) === String(customerTableId)) { 
+                        // Show current table's active orders (in case phone number wasn't provided for this specific order)
+                        matches = true;
+                    }
+                    
+                    if (!matches) return false;
+                }
+
+                return dateMatch && statusMatch && searchMatch;
             });
             setOrders(filtered);
 
@@ -76,7 +104,7 @@ const OrderHistory = () => {
     };
 
     const handleCancelOrder = async () => {
-        if (!window.confirm("Are you sure you want to CANCEL this order? This will revert inventory stock.")) return;
+        if (!(await customConfirm("Are you sure you want to CANCEL this order? This will revert inventory stock."))) return;
         try {
             await api.cancelOrder(selectedOrder.id);
             alert("Order Cancelled successfully.");
@@ -87,7 +115,7 @@ const OrderHistory = () => {
     };
 
     const handleDeleteOrder = async () => {
-        if (!window.confirm("Permanently DELETE this order history? This cannot be undone.")) return;
+        if (!(await customConfirm("Permanently DELETE this order history? This cannot be undone."))) return;
         try {
             await api.deleteOrder(selectedOrder.id);
             alert("Order deleted permanently.");
@@ -156,7 +184,7 @@ const OrderHistory = () => {
         const isCancelled = selectedOrder.status === 'CANCELLED';
         const isPreparing = selectedOrder.status === 'PREPARING';
         const isReady = selectedOrder.status === 'READY';
-        const canEdit = selectedOrder.status === 'ORDERED';
+        const canEdit = !isCustomerMode && selectedOrder.status === 'ORDERED';
 
         return (
             <div className="animate-in slide-in-from-right-8 duration-500 pb-12">
@@ -249,8 +277,12 @@ const OrderHistory = () => {
                         <p className="text-slate-500 font-medium">Placed on {new Date(selectedOrder.created_at).toLocaleString()}</p>
                     </div>
 
-                    <div className="bg-white px-6 py-4 rounded-2xl shadow-sm border border-slate-200 text-right">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Bill</p>
+                    <div className="bg-white px-6 py-4 rounded-2xl shadow-sm border border-slate-200 text-right space-y-1">
+                        <div className="flex justify-end items-center space-x-4 text-xs font-bold text-slate-400">
+                            <span>Sub: ₹{(Number(selectedOrder.total_amount || 0) - Number(selectedOrder.tax_amount || 0) - Number(selectedOrder.service_charge || 0)).toFixed(2)}</span>
+                            <span>GST: ₹{Number(selectedOrder.tax_amount || 0).toFixed(2)}</span>
+                            <span>SC: ₹{Number(selectedOrder.service_charge || 0).toFixed(2)}</span>
+                        </div>
                         <p className="text-3xl font-black text-slate-900 tracking-tight">₹{selectedOrder.total_amount}</p>
                     </div>
                 </div>
@@ -307,30 +339,53 @@ const OrderHistory = () => {
                                     <span className={`font-bold uppercase tracking-wider ${isCancelled ? 'text-red-500' : 'text-slate-900'}`}>{selectedOrder.status}</span>
                                 </div>
                                 <div className="flex justify-between border-b border-slate-100 pb-3">
-                                    <span className="text-slate-500 font-medium">Order Type</span>
-                                    <span className="font-bold text-slate-900">{selectedOrder.type === 'DINE_IN' ? 'Dine-In' : 'QSR / Walk-In'}</span>
+                                    <span className="text-slate-500 font-medium">Order Type / Source</span>
+                                    <span className="font-bold text-slate-900">
+                                        {selectedOrder.order_source === 'QR_TABLE' ? '📱 Table QR' :
+                                            selectedOrder.order_source === 'QR_WALKIN' ? '🚶 Walk-in QR' :
+                                                selectedOrder.type === 'DINE_IN' ? '🏠 Dine-in' : '🛒 Walk-in Sales'}
+                                    </span>
                                 </div>
-                                {selectedOrder.type === 'DINE_IN' && (
+                                <div className="flex justify-between border-b border-slate-100 pb-3">
+                                    <span className="text-slate-500 font-medium">Placed By</span>
+                                    <span className="font-bold text-slate-900 px-2 py-0.5 bg-slate-100 rounded text-xs uppercase tracking-widest">
+                                        {selectedOrder.ordered_by || selectedOrder.creator_role || 'STAFF'}
+                                    </span>
+                                </div>
+                                {selectedOrder.table_id && (
                                     <div className="flex justify-between border-b border-slate-100 pb-3">
                                         <span className="text-slate-500 font-medium">Table Number</span>
-                                        <span className="font-bold text-slate-900">{selectedOrder.table_id || 'N/A'}</span>
+                                        <span className="font-bold text-slate-900">T-{selectedOrder.table_id}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between border-b border-slate-100 pb-3">
                                     <span className="text-slate-500 font-medium">Payment Status</span>
-                                    <span className={`font-bold ${selectedOrder.payment_status === 'COMPLETED' ? 'text-emerald-600' : isCancelled || selectedOrder.payment_status === 'FAILED' ? 'text-red-500' : 'text-amber-500'}`}>
-                                        {selectedOrder.payment_status || (isCancelled ? 'FAILED' : 'PENDING')}
+                                    <span className={`font-bold ${(selectedOrder.payment_status === 'COMPLETED' || selectedOrder.payment_status === 'PAID') ? 'text-emerald-600' : isCancelled || selectedOrder.payment_status === 'FAILED' ? 'text-red-500' : 'text-amber-500'}`}>
+                                        {selectedOrder.payment_status === 'PAID' ? 'PAID' : (selectedOrder.payment_status || (isCancelled ? 'FAILED' : 'PENDING'))}
                                     </span>
                                 </div>
-                                <div className="flex justify-between">
+                                <div className="flex justify-between border-b border-slate-100 pb-3">
                                     <span className="text-slate-500 font-medium">Tender Method</span>
                                     <span className="font-bold text-slate-900">{isCancelled ? 'N/A' : (selectedOrder.payment_method || 'Unpaid')}</span>
                                 </div>
+                                {selectedOrder.customer_name && (
+                                    <div className="pt-2 mt-2 border-t border-slate-100 animate-in fade-in slide-in-from-top-1">
+                                        <h4 className="text-[10px] font-black uppercase text-secondary tracking-widest mb-2">Customer Details</h4>
+                                        <div className="flex justify-between mb-1">
+                                            <span className="text-slate-500 font-medium">Name</span>
+                                            <span className="font-bold text-slate-900">{selectedOrder.customer_name}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-500 font-medium">Phone</span>
+                                            <span className="font-bold text-slate-900">{selectedOrder.customer_phone}</span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </Card>
 
                         {/* Order Management Actions */}
-                        {!isClosed && !isCancelled && (
+                        {!isCustomerMode && !isClosed && !isCancelled && (
                             <div className="space-y-3">
                                 {canEdit ? (
                                     <>
@@ -351,7 +406,7 @@ const OrderHistory = () => {
                         )}
 
                         {/* Process Payment Widget */}
-                        {selectedOrder.payment_status !== 'COMPLETED' && !isCancelled && !isClosed && (
+                        {!isCustomerMode && selectedOrder.payment_status !== 'COMPLETED' && !isCancelled && !isClosed && (
                             <Card className="border-0 ring-1 ring-blue-100 shadow-xl shadow-blue-100/50 rounded-2xl p-0 overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50/30">
                                 <div className="p-6">
                                     <h3 className="font-black text-blue-900 mb-2">Process Payment</h3>
@@ -384,15 +439,17 @@ const OrderHistory = () => {
                             </Card>
                         )}
 
-                        <button
-                            onClick={() => {
-                                alert(`Receipt / KOT sent to Printer for Order #${selectedOrder.id}`);
-                            }}
-                            className="w-full flex items-center justify-center p-4 bg-orange-50 rounded-xl border border-orange-200 hover:bg-orange-100 transition-all shadow-sm"
-                        >
-                            <svg className="w-5 h-5 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                            <span className="font-bold text-orange-700 tracking-wide uppercase">Print KOT / Receipt</span>
-                        </button>
+                        {!isCustomerMode && (
+                            <button
+                                onClick={() => {
+                                    alert(`Receipt / KOT sent to Printer for Order #${selectedOrder.id}`);
+                                }}
+                                className="w-full flex items-center justify-center p-4 bg-orange-50 rounded-xl border border-orange-200 hover:bg-orange-100 transition-all shadow-sm"
+                            >
+                                <svg className="w-5 h-5 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                <span className="font-bold text-orange-700 tracking-wide uppercase">Print KOT / Receipt</span>
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -411,6 +468,20 @@ const OrderHistory = () => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4">
+                    {/* Search Bar */}
+                    <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search by Phone, Name, or ID..."
+                            className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all shadow-sm w-[280px]"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+
                     {/* Status Tabs */}
                     <div className="flex bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                         {[
@@ -443,6 +514,15 @@ const OrderHistory = () => {
                             value={filterDate}
                             onChange={(e) => setFilterDate(e.target.value)}
                         />
+                        {filterDate && (
+                            <button 
+                                onClick={() => setFilterDate('')}
+                                className="pr-3 text-slate-400 hover:text-red-500 transition-colors"
+                                title="Show All Dates"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -453,7 +533,7 @@ const OrderHistory = () => {
                 <div className="border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center p-16 text-center bg-white/50">
                     <svg className="w-16 h-16 text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     <h3 className="text-xl font-bold text-slate-900">No operations found</h3>
-                    <p className="text-slate-500 mt-2">No incoming or closed orders recorded for this exact date.</p>
+                    <p className="text-slate-500 mt-2">No incoming or closed orders recorded {filterDate ? 'for this exact date' : 'in the system'}.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -492,23 +572,29 @@ const OrderHistory = () => {
                                         {order.items?.map(i => `${i.qty}x ${i.name}`).join(', ') || <span className="italic text-slate-400">Loading contents...</span>}
                                     </div>
 
-                                    <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                                        <div className="flex items-center space-x-2">
-                                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider bg-slate-100 px-2 py-1 rounded">
-                                                {order.type === 'DINE_IN' ? `TABLE ${order.table_id}` : 'Walk In'}
+                                    <div className="flex flex-wrap items-center justify-between pt-4 border-t border-slate-100 gap-2">
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-slate-100 px-2 py-1 rounded whitespace-nowrap">
+                                                {order.order_source === 'QR_TABLE' ? `📱 Table ${order.table_id}` :
+                                                    order.order_source === 'QR_WALKIN' ? '🚶 Walk-in QR' :
+                                                        order.type === 'DINE_IN' ? `🏠 Table ${order.table_id}` :
+                                                            '🛒 Walk-in Sales'}
+                                            </span>
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-slate-100 px-2 py-1 rounded whitespace-nowrap">
+                                                👤 {order.ordered_by || order.creator_role || 'STAFF'}
                                             </span>
                                             {order.status === 'CANCELLED' ? (
-                                                <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">FAILED</span>
+                                                <span className="text-[10px] font-black text-red-500 uppercase tracking-widest bg-red-50 px-2 py-1 rounded whitespace-nowrap border border-red-100">FAIL</span>
                                             ) : (
-                                                <span className={`text-[10px] font-bold uppercase tracking-wider ${order.payment_status === 'COMPLETED' ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                                    {order.payment_status || 'PENDING'}
+                                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded whitespace-nowrap border ${ (order.payment_status === 'COMPLETED' || order.payment_status === 'PAID') ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 'text-amber-600 bg-amber-50 border-amber-100' }`}>
+                                                    {order.payment_status === 'PAID' ? 'PAID' : (order.payment_status || 'PENDING')}
                                                 </span>
                                             )}
                                         </div>
 
-                                        <div className="flex items-center text-sm font-bold text-blue-600 group-hover:translate-x-1 transition-transform">
-                                            {isClosed ? 'View Receipt' : 'Take Action'}
-                                            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                                        <div className="flex items-center text-xs font-black text-blue-600 group-hover:translate-x-1 transition-transform whitespace-nowrap ml-auto">
+                                            {isCustomerMode ? 'View Details' : (isClosed ? 'View Receipt' : 'Take Action')}
+                                            <svg className="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
                                         </div>
                                     </div>
                                 </div>

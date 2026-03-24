@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Input, Loader, Card } from '../../ui';
 import api from '../../../services/api';
+import { customConfirm } from '../../../utils/Alert';
 
 const MenuInventoryManager = () => {
     const [menu, setMenu] = useState([]);
@@ -86,7 +87,7 @@ const MenuInventoryManager = () => {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this item?")) return;
+        if (!(await customConfirm("Are you sure you want to delete this item?"))) return;
         try {
             await api.deleteMenuItem(id);
             setMenu(menu.filter(item => item.id !== id));

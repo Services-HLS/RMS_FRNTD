@@ -144,7 +144,7 @@ const TableManager = () => {
                             className={`relative overflow-hidden group cursor-pointer border shadow-lg hover:shadow-xl transition-all h-36 flex flex-col justify-between ${config.color}`}
                             onClick={() => {
                                 if (table.status === 'AVAILABLE') {
-                                    navigate(`/admin/pos?table=${table.table_number || table.id}`);
+                                    navigate(`/admin/pos?table=${table.id}`);
                                 } else if (table.status === 'OCCUPIED' || activeOrder) {
                                     setCheckoutTable(table);
                                     setCheckoutOrder(activeOrder || null);
@@ -166,7 +166,11 @@ const TableManager = () => {
                                     <p className="text-3xl font-black mt-1 tracking-tight">{table.table_number}</p>
                                     {activeOrder && (
                                         <div className="text-right">
-                                            <p className="text-sm font-bold opacity-75">Order #{activeOrder.id}</p>
+                                            <div className="flex items-center justify-end space-x-1">
+                                                {(activeOrder.order_source === 'QR_TABLE' || activeOrder.order_source === 'TABLE_QR') && <span className="text-[10px] bg-indigo-500 text-white px-1.5 py-0.5 rounded font-black mb-1">QR TABLE</span>}
+                                                {activeOrder.order_source === 'QR_WALKIN' && <span className="text-[10px] bg-orange-500 text-white px-1.5 py-0.5 rounded font-black mb-1">QR WALK</span>}
+                                                <p className="text-[10px] font-bold opacity-75">#{activeOrder.id}</p>
+                                            </div>
                                             <p className="text-lg font-black tracking-tight">₹{activeOrder.total_amount}</p>
                                         </div>
                                     )}
@@ -244,7 +248,7 @@ const TableManager = () => {
                                     <h4 className="font-bold text-slate-700 text-sm mb-3 uppercase tracking-widest text-center">Operation Gateways</h4>
 
                                     <Button
-                                        onClick={() => navigate(`/admin/pos?table=${checkoutTable.table_number || checkoutTable.id}`)}
+                                        onClick={() => navigate(`/admin/pos?table=${checkoutTable.id}`)}
                                         className="w-full py-4 text-lg font-black shadow-lg shadow-blue-100 bg-gradient-to-r from-slate-700 to-slate-900 hover:from-slate-800 hover:to-black text-white"
                                     >
                                         <span className="mr-2">📝</span> Add Items / Order More

@@ -10,7 +10,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: "http://dine360-env.eba-jnhgvsu9.ap-south-1.elasticbeanstalk.com",
         changeOrigin: true,
       },
     },

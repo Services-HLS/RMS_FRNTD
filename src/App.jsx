@@ -1,6 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { AdminLogin, AdminDashboard, SuperAdminLogin, SuperAdminDashboard, CustomerMenu, OrderTracking, KitchenDashboard } from './pages';
+import { HashRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { AdminLogin, AdminDashboard, SuperAdminLogin, SuperAdminDashboard, CustomerMenu, OrderTracking, KitchenDashboard, PromotionDetail } from './pages';
 import { SidebarLayout, AdminPOS, ExpensesManager, OrderHistory, StockManager, MenuInventoryManager, MarketingManager, TableManager, QRGenerator, PrinterStatus } from './components/features/admin';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
@@ -31,10 +31,6 @@ const RoleProtectedRoute = ({ children, allowedRoles, requireDineIn }) => {
 
   const role = String(user.role).toLowerCase();
 
-  // If a given feature requires Dine-In mode, auto-lock QSR / Takeaway (WALK_IN) users out.
-  if (requireDineIn && user.restaurant_type === 'WALK_IN') {
-    return <LockedPage />;
-  }
 
   if (allowedRoles && !allowedRoles.map(r => r.toLowerCase()).includes(role)) {
     return <LockedPage />;
@@ -50,7 +46,7 @@ const AdminLandingRedirect = () => {
   if (role === 'cashier') return <Navigate to="/admin/pos" replace />;
   if (role === 'chef') return <Navigate to="/admin/kitchen" replace />;
   if (role === 'inventory') return <Navigate to="/admin/stock" replace />;
-  if (role === 'waiter' && user?.restaurant_type !== 'WALK_IN') return <Navigate to="/admin/tables" replace />;
+  if (role === 'waiter') return <Navigate to="/admin/tables" replace />;
   return <Navigate to="dashboard" replace />;
 };
 
@@ -59,10 +55,15 @@ const MainLayout = ({ children }) => {
   const { token, user } = useAuth();
   const location = useLocation();
   // If user is logged in and on an admin/kitchen route, the Header is rendered inside those layouts instead
-  const isInternal = token && user && (location.pathname.startsWith('/admin') || location.pathname.startsWith('/kitchen') || location.pathname.startsWith('/super-admin'));
+  const isInternal = (token && user && (location.pathname.startsWith('/admin') || location.pathname.startsWith('/kitchen') || location.pathname.startsWith('/super-admin'))) || location.pathname.startsWith('/menu');
 
-  // Entirely remove Header/Footer from standard rendering specifically for login screen for a strictly isolated full-screen theme view
-  const isIsolatedTheme = location.pathname.startsWith('/login') || location.pathname.startsWith('/super-admin/login');
+  // Entirely remove Header/Footer from standard rendering specifically for login screen and customer-facing menu
+  const isIsolatedTheme = 
+        window.location.pathname.startsWith('/order/') || 
+        window.location.pathname.startsWith('/menu/') ||
+        window.location.pathname.startsWith('/track/') ||
+        window.location.pathname.indexOf('customer-menu') !== -1 ||
+        window.location.pathname.startsWith('/promotion/');
 
   return (
     <div className={`flex flex-col bg-slate-50 ${isInternal ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
@@ -192,6 +193,8 @@ function App() {
             {/* Customer Routes */}
             <Route path="/menu" element={<CustomerMenu />} />
             <Route path="/order/:orderId" element={<OrderTracking />} />
+            <Route path="/order/history/:phone" element={<div className="min-h-screen bg-slate-50 p-4"><div className="max-w-4xl mx-auto"><OrderHistory isCustomerMode={true} /></div></div>} />
+            <Route path="/promotion/:id" element={<PromotionDetail />} />
           </Routes>
         </MainLayout>
       </Router>

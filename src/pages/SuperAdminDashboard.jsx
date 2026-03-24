@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Input, Loader } from '../components/ui';
 import api from '../services/api';
+import { customConfirm } from '../utils/Alert';
 import { useAuth } from '../context/AuthContext';
 
 const SuperAdminDashboard = () => {
@@ -24,7 +25,6 @@ const SuperAdminDashboard = () => {
     const [newRestaurant, setNewRestaurant] = useState({
         name: '',
         restaurant_code: '',
-        type: 'DINE_IN',
         logo_url: ''
     });
     const [logoFile, setLogoFile] = useState(null);
@@ -50,14 +50,13 @@ const SuperAdminDashboard = () => {
             const formData = new FormData();
             formData.append('name', newRestaurant.name);
             formData.append('restaurant_code', newRestaurant.restaurant_code);
-            formData.append('type', newRestaurant.type);
             if (newRestaurant.logo_url) formData.append('logo_url', newRestaurant.logo_url);
             if (logoFile) formData.append('logo_file', logoFile);
 
             await api.createRestaurant(formData);
             setShowAddModal(false);
             fetchRestaurants();
-            setNewRestaurant({ name: '', restaurant_code: '', type: 'DINE_IN', logo_url: '' });
+            setNewRestaurant({ name: '', restaurant_code: '', logo_url: '' });
             setLogoFile(null);
         } catch (error) {
             console.error("Failed to add restaurant", error);
@@ -65,7 +64,7 @@ const SuperAdminDashboard = () => {
     };
 
     const handleDeleteRestaurant = async (restaurantId) => {
-        if (!window.confirm('Are you sure you want to delete this restaurant? This will remove all associated data including admins, menu, and orders. This action cannot be undone.')) return;
+        if (!(await customConfirm('Are you sure you want to delete this restaurant? This will remove all associated data including admins, menu, and orders. This action cannot be undone.'))) return;
         try {
             await api.deleteRestaurant(restaurantId);
             fetchRestaurants();
@@ -131,7 +130,7 @@ const SuperAdminDashboard = () => {
     };
 
     const handleDeleteAdmin = async (adminId) => {
-        if (!window.confirm('Are you sure you want to remove this admin? This action cannot be undone.')) return;
+        if (!(await customConfirm('Are you sure you want to remove this admin? This action cannot be undone.'))) return;
         try {
             await api.deleteAdmin(adminId);
             const updatedAdmins = await api.getAdmins(selectedRestaurant.id);
@@ -198,10 +197,6 @@ const SuperAdminDashboard = () => {
                                         <div className="flex flex-wrap items-center gap-2 mt-2">
                                             <span className="text-[9px] font-semibold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 uppercase tracking-wide">
                                                 ID: {rest.restaurant_code}
-                                            </span>
-                                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide border ${rest.type === 'DINE_IN' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-orange-50 text-orange-700 border-orange-100'
-                                                }`}>
-                                                {rest.type === 'DINE_IN' ? 'Dine-in' : 'QSR'}
                                             </span>
                                         </div>
                                     </div>
@@ -285,17 +280,6 @@ const SuperAdminDashboard = () => {
                                                 className="w-full flex-1"
                                             />
                                         </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Operating Type</label>
-                                        <select
-                                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-shadow"
-                                            value={newRestaurant.type}
-                                            onChange={(e) => setNewRestaurant({ ...newRestaurant, type: e.target.value })}
-                                        >
-                                            <option value="DINE_IN">Dine-in (Table QR & Waiter)</option>
-                                            <option value="WALK_IN">QSR (Counter Walk-in)</option>
-                                        </select>
                                     </div>
                                     <div className="flex space-x-3 pt-4 border-t border-slate-100">
                                         <Button type="button" variant="outline" className="flex-1 border-slate-200 hover:bg-slate-50" onClick={() => setShowAddModal(false)}>Cancel</Button>
@@ -381,7 +365,6 @@ const SuperAdminDashboard = () => {
                                                     <option value="" disabled>Select a role...</option>
                                                     {roles.filter(r => {
                                                         if (r.name === 'super_admin') return false;
-                                                        if (selectedRestaurant?.type !== 'DINE_IN' && r.name === 'waiter') return false;
                                                         return true;
                                                     }).map(role => (
                                                         <option key={role.id} value={role.id}>{String(role.name).charAt(0).toUpperCase() + String(role.name).slice(1)}</option>
